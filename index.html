@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple YouTube Playlist Cards</title>
+<style>
+  body {
+    margin: 20px;
+    background: #121212;
+    font-family: Arial, sans-serif;
+    color: #eee;
+  }
+  h1 {
+    text-align: center;
+    color: #e63946;
+    margin-bottom: 30px;
+  }
+  .grid-container {
+    display: grid;
+    gap: 15px;
+  }
+  @media (max-width: 767px) {
+    .grid-container {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  @media (min-width: 768px) {
+    .grid-container {
+      grid-template-columns: repeat(10, 1fr);
+    }
+  }
+  .card {
+    background: #2a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 8px #e63946;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .card:hover, .card.active {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px #f44336;
+    z-index: 10;
+  }
+  .thumbnail img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+  .title {
+    padding: 8px 6px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-align: center;
+    color: #f1faee;
+    user-select: none;
+  }
+  .player iframe {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 16 / 9;
+    border: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>My Favorite Songs Playlist</h1>
+
+<div class="grid-container" id="gridContainer"></div>
+
+<script>
+  const songs = [
+    {id:"dQw4w9WgXcQ", title:"Never Gonna Give You Up"},
+    {id:"3JZ_D3ELwOQ", title:"Counting Stars"},
+    {id:"9bZkp7q19f0", title:"Gangnam Style"},
+    {id:"fRh_vgS2dFE", title:"Uptown Funk"},
+    {id:"YQHsXMglC9A", title:"Hello"},
+    {id:"ktvTqknDobU", title:"Radioactive"},
+    {id:"RgKAFK5djSk", title:"See You Again"},
+    {id:"CevxZvSJLk8", title:"Roar"},
+    {id:"2vjPBrBU-TM", title:"Chandelier"},
+    {id:"60ItHLz5WEA", title:"Faded"}
+  ];
+
+  let currentIndex = -1;
+  const container = document.getElementById('gridContainer');
+  const players = {};
+
+  // Load YouTube iframe API
+  let tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
+
+  // Create cards
+  songs.forEach((song, index) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.index = index;
+
+    const thumb = document.createElement('div');
+    thumb.className = 'thumbnail';
+    const img = document.createElement('img');
+    img.src = `https://img.youtube.com/vi/${song.id}/hqdefault.jpg`;
+    img.alt = song.title;
+    thumb.appendChild(img);
+
+    const title = document.createElement('p');
+    title.className = 'title';
+    title.textContent = song.title;
+
+    card.appendChild(thumb);
+    card.appendChild(title);
+
+    card.addEventListener('click', () => {
+      if(currentIndex === index) return;
+      playVideo(index);
+    });
+
+    container.appendChild(card);
+  });
+
+  // This function will be called by YouTube iframe API after it loads
+  function onYouTubeIframeAPIReady() {
+    // No action here; players created on demand
+  }
+
+  function playVideo(index) {
+    // Stop old video if any
+    if(currentIndex !== -1) stopVideo(currentIndex);
+
+    const card = container.querySelector(`.card[data-index="${index}"]`);
+    const thumb = card.querySelector('.thumbnail');
+    thumb.style.display = 'none';
+
+    let playerDiv = card.querySelector('.player');
+    if(!playerDiv) {
+      playerDiv = document.createElement('div');
+      playerDiv.className = 'player';
+      card.appendChild(playerDiv);
+    }
+    playerDiv.style.display = 'block';
+
+    if(players[index]) {
+      players[index].playVideo();
+    } else {
+      players[index] = new YT.Player(playerDiv, {
+        videoId: songs[index].id,
+        events: {
+          'onStateChange': (event) => {
+            if(event.data === YT.PlayerState.ENDED) {
+              playNext(index);
+            }
+          }
+        },
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          enablejsapi: 1,
+          showinfo: 0
+        }
+      });
+    }
+
+    currentIndex = index;
+    updateActiveCard();
+  }
+
+  function stopVideo(index) {
+    const card = container.querySelector(`.card[data-index="${index}"]`);
+    if(!card) return;
+
+    const playerDiv = card.querySelector('.player');
+    const thumb = card.querySelector('.thumbnail');
+
+    if(players[index]) {
+      players[index].stopVideo();
+    }
+    if(playerDiv) playerDiv.style.display = 'none';
+    if(thumb) thumb.style.display = 'block';
+  }
+
+  function playNext(index) {
+    let next = index + 1;
+    if(next >= songs.length) next = 0;
+    playVideo(next);
+  }
+
+  function updateActiveCard() {
+    document.querySelectorAll('.card').forEach(card => {
+      card.classList.toggle('active', parseInt(card.dataset.index) === currentIndex);
+    });
+  }
+</script>
+
+</body>
+</html>
